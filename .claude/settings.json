@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(git *)",
+      "Bash(start *)"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

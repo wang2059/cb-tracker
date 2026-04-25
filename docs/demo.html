@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台灣可轉債熱力圖 Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", sans-serif; background: #f0f4f8; color: #222; }
+
+    /* Header */
+    header {
+      background: #0f2942;
+      color: #fff;
+      padding: 0 24px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px; }
+    header .meta { font-size: 0.8rem; color: #94b8d8; }
+    .demo-badge {
+      background: #f59e0b; color: #000; font-size: 0.72rem;
+      font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 10px;
+    }
+
+    /* Layout */
+    .layout { display: flex; height: calc(100vh - 52px); }
+
+    /* Sidebar */
+    nav {
+      width: 190px; min-width: 190px;
+      background: #fff;
+      border-right: 1px solid #dde4ed;
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .nav-section-title {
+      font-size: 0.72rem; font-weight: 700; color: #94a3b8;
+      letter-spacing: 1px; text-transform: uppercase;
+      padding: 16px 16px 6px;
+    }
+    nav button {
+      display: flex; justify-content: space-between; align-items: center;
+      width: 100%; padding: 10px 16px;
+      border: none; background: none; cursor: pointer;
+      font-size: 0.9rem; color: #475569;
+      transition: background 0.12s;
+      text-align: left;
+      border-left: 3px solid transparent;
+    }
+    nav button:hover { background: #f1f5f9; }
+    nav button.active {
+      background: #eff6ff; color: #1d4ed8;
+      font-weight: 600; border-left-color: #2563eb;
+    }
+    .badge {
+      background: #e2e8f0; color: #64748b;
+      border-radius: 10px; padding: 2px 9px;
+      font-size: 0.75rem; font-weight: 700; min-width: 26px; text-align: center;
+    }
+    nav button.active .badge { background: #bfdbfe; color: #1d4ed8; }
+
+    .nav-divider { height: 1px; background: #e8edf4; margin: 8px 0; }
+
+    /* Legend */
+    .legend {
+      padding: 12px 14px 16px;
+      border-top: 1px solid #e8edf4;
+      margin-top: auto;
+    }
+    .legend-title { font-size: 0.7rem; color: #94a3b8; font-weight: 700; letter-spacing: 0.8px; margin-bottom: 8px; }
+    .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 0.75rem; color: #64748b; }
+    .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+    /* Main */
+    main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+    .main-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .main-title { font-size: 1rem; font-weight: 700; color: #1e3a5f; }
+    .main-sub { font-size: 0.8rem; color: #94a3b8; }
+    .sort-note {
+      font-size: 0.78rem; color: #64748b;
+      background: #fff; border: 1px solid #e2e8f0;
+      padding: 4px 12px; border-radius: 20px;
+    }
+
+    /* Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+      gap: 8px;
+    }
+
+    /* Card */
+    .card {
+      border-radius: 8px;
+      padding: 11px 12px 10px;
+      cursor: default;
+      transition: transform 0.12s, box-shadow 0.12s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.15); }
+    .card-name {
+      font-size: 0.88rem; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .card-industry {
+      font-size: 0.72rem; opacity: 0.85;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      margin-bottom: 7px;
+    }
+    .card-bottom {
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .card-chain {
+      font-size: 0.68rem; font-weight: 700;
+      padding: 2px 7px; border-radius: 4px;
+      background: rgba(255,255,255,0.28);
+    }
+    .card-price-block { text-align: right; }
+    .card-price { font-size: 0.78rem; opacity: 0.9; line-height: 1; }
+    .card-change { font-size: 1rem; font-weight: 800; line-height: 1.3; }
+
+    /* Stats bar */
+    .stats-bar {
+      display: flex; gap: 16px; margin-bottom: 16px;
+    }
+    .stat-box {
+      background: #fff; border-radius: 8px; padding: 10px 16px;
+      border: 1px solid #e2e8f0; flex: 1; text-align: center;
+    }
+    .stat-label { font-size: 0.72rem; color: #94a3b8; font-weight: 600; }
+    .stat-value { font-size: 1.1rem; font-weight: 800; margin-top: 2px; }
+    .stat-value.up { color: #dc2626; }
+    .stat-value.down { color: #16a34a; }
+    .stat-value.neutral { color: #475569; }
+
+    .empty { text-align: center; padding: 60px; color: #94a3b8; grid-column: 1/-1; }
+  </style>
+</head>
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <h1>台灣可轉債熱力圖</h1>
+    <span class="demo-badge">DEMO</span>
+  </div>
+  <span class="meta">資料日期：2026-04-25　共 40 檔</span>
+</header>
+
+<div class="layout">
+  <nav>
+    <div class="nav-section-title">價格分布</div>
+    <button class="active" onclick="filterBy('all')">
+      <span>全部</span><span class="badge" id="b-all">40</span>
+    </button>
+    <button onclick="filterBy('u100')">
+      <span>100 以下</span><span class="badge" id="b-u100">0</span>
+    </button>
+    <button onclick="filterBy('100-120')">
+      <span>100–120</span><span class="badge" id="b-100-120">0</span>
+    </button>
+    <button onclick="filterBy('120-135')">
+      <span>120–135</span><span class="badge" id="b-120-135">0</span>
+    </button>
+    <button onclick="filterBy('135-150')">
+      <span>135–150</span><span class="badge" id="b-135-150">0</span>
+    </button>
+    <button onclick="filterBy('o150')">
+      <span>150 以上</span><span class="badge" id="b-o150">0</span>
+    </button>
+
+    <div class="nav-divider"></div>
+
+    <div class="legend">
+      <div class="legend-title">漲跌色階</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#7f0000"></div> 深紅 ≥8.5%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#d32f2f"></div> 中紅 6.5–8.4%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#ef9a9a"></div> 淡紅 5–6.4%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#ffcdd2"></div> 更淡紅 3–4.9%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#fff5f5;border:1px solid #eee"></div> 紅白底 0–2.9%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#f5fff7;border:1px solid #eee"></div> 綠白底 0–2.9%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#c8e6c9"></div> 更淡綠 3–4.9%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#81c784"></div> 淡綠 5–6.4%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#2e7d32"></div> 中綠 6.5–8.4%</div>
+      <div class="legend-row"><div class="legend-swatch" style="background:#1b5e20"></div> 深綠 ≥8.5%</div>
+    </div>
+  </nav>
+
+  <main>
+    <div class="stats-bar">
+      <div class="stat-box">
+        <div class="stat-label">上漲檔數</div>
+        <div class="stat-value up" id="s-up">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">下跌檔數</div>
+        <div class="stat-value down" id="s-down">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">平盤檔數</div>
+        <div class="stat-value neutral" id="s-flat">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">最大漲幅</div>
+        <div class="stat-value up" id="s-top">—</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">最大跌幅</div>
+        <div class="stat-value down" id="s-bot">—</div>
+      </div>
+    </div>
+
+    <div class="main-header">
+      <div>
+        <div class="main-title" id="grid-title">全部可轉債</div>
+        <div class="main-sub">依漲跌幅由高至低排列</div>
+      </div>
+      <div class="sort-note">↕ 漲跌幅排序</div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+  </main>
+</div>
+
+<script>
+const DATA = [
+  { id:"14027", name:"力旺二",   industry:"電子-IC設計",    chain:"上游", price:158.5, change:9.9 },
+  { id:"14028", name:"昇佳電三", industry:"電子-IC設計",    chain:"上游", price:142.0, change:8.7 },
+  { id:"14001", name:"智邦四",   industry:"電子-網通",      chain:"中游", price:138.5, change:7.9 },
+  { id:"14003", name:"緯穎二",   industry:"電子-伺服器",    chain:"下游", price:162.0, change:7.5 },
+  { id:"14002", name:"台光電三", industry:"電子-PCB",       chain:"上游", price:125.0, change:6.8 },
+  { id:"14007", name:"聯發科二", industry:"電子-IC設計",    chain:"上游", price:157.0, change:6.2 },
+  { id:"14038", name:"聯詠四",   industry:"電子-IC設計",    chain:"上游", price:127.0, change:5.9 },
+  { id:"14032", name:"台達電四", industry:"電子-電源",      chain:"中游", price:151.0, change:5.5 },
+  { id:"14005", name:"信驊二",   industry:"電子-IC設計",    chain:"上游", price:145.5, change:5.1 },
+  { id:"14006", name:"瑞昱三",   industry:"電子-IC設計",    chain:"上游", price:133.0, change:4.3 },
+  { id:"14029", name:"晶技三",   industry:"電子-被動元件",  chain:"上游", price:129.5, change:3.8 },
+  { id:"14039", name:"嘉澤三",   industry:"電子-連接器",    chain:"中游", price:136.0, change:3.5 },
+  { id:"14030", name:"日月光二", industry:"電子-封測",      chain:"中游", price:135.5, change:3.7 },
+  { id:"14004", name:"勤誠三",   industry:"電子-機殼",      chain:"中游", price:108.5, change:3.2 },
+  { id:"14033", name:"研華三",   industry:"電子-工業電腦",  chain:"下游", price:143.5, change:2.8 },
+  { id:"14009", name:"可成二",   industry:"電子-機殼",      chain:"中游", price:118.0, change:2.5 },
+  { id:"14031", name:"聯電三",   industry:"電子-晶圓代工",  chain:"上游", price:118.5, change:2.1 },
+  { id:"14008", name:"新普四",   industry:"電子-電池",      chain:"中游", price:112.5, change:1.8 },
+  { id:"14036", name:"統一三",   industry:"傳產-食品",      chain:"下游", price:111.5, change:1.5 },
+  { id:"14011", name:"富邦金二", industry:"金融-保險",      chain:"下游", price:128.0, change:1.2 },
+  { id:"14010", name:"玉山金三", industry:"金融-銀行",      chain:"下游", price:105.5, change:0.9 },
+  { id:"14012", name:"國泰金三", industry:"金融-保險",      chain:"下游", price:119.5, change:0.5 },
+  { id:"14040", name:"神基二",   industry:"電子-工業電腦",  chain:"下游", price:116.5, change:0.3 },
+  { id:"14014", name:"南亞二",   industry:"傳產-塑膠",      chain:"中游", price:103.0, change:0.1 },
+  { id:"14013", name:"台塑三",   industry:"傳產-化工",      chain:"上游", price: 98.5, change:0.0 },
+  { id:"14034", name:"和碩二",   industry:"電子-EMS",       chain:"下游", price:109.5, change:-0.5 },
+  { id:"14015", name:"鴻海五",   industry:"電子-EMS",       chain:"下游", price:115.5, change:-1.5 },
+  { id:"14016", name:"廣達三",   industry:"電子-EMS",       chain:"下游", price:122.0, change:-0.8 },
+  { id:"14018", name:"中鋼二",   industry:"傳產-鋼鐵",      chain:"上游", price: 94.5, change:-1.1 },
+  { id:"14037", name:"遠東新二", industry:"傳產-紡織",      chain:"中游", price:105.0, change:-1.3 },
+  { id:"14019", name:"台化三",   industry:"傳產-化工",      chain:"中游", price:108.0, change:-1.8 },
+  { id:"14017", name:"仁寶二",   industry:"電子-EMS",       chain:"下游", price: 97.0, change:-2.2 },
+  { id:"14035", name:"裕隆三",   industry:"傳產-汽車",      chain:"下游", price: 96.0, change:-2.5 },
+  { id:"14024", name:"建大三",   industry:"傳產-橡膠",      chain:"中游", price:102.5, change:-2.9 },
+  { id:"14020", name:"友達三",   industry:"電子-面板",      chain:"中游", price: 88.5, change:-3.8 },
+  { id:"14023", name:"華亞科二", industry:"電子-記憶體",    chain:"上游", price: 86.5, change:-3.1 },
+  { id:"14021", name:"群創二",   industry:"電子-面板",      chain:"中游", price: 82.0, change:-4.5 },
+  { id:"14022", name:"旺宏四",   industry:"電子-記憶體",    chain:"上游", price: 91.0, change:-5.2 },
+  { id:"14025", name:"美律三",   industry:"電子-聲學",      chain:"中游", price: 79.5, change:-6.8 },
+  { id:"14026", name:"錸德二",   industry:"電子-光碟",      chain:"中游", price: 72.0, change:-8.3 },
+];
+
+function getBucket(price) {
+  if (price < 100)  return 'u100';
+  if (price < 120)  return '100-120';
+  if (price < 135)  return '120-135';
+  if (price < 150)  return '135-150';
+  return 'o150';
+}
+
+function getColor(change) {
+  if (change >= 8.5) return { bg:'#7f0000', text:'#fff' };   // 深紅
+  if (change >= 6.5) return { bg:'#d32f2f', text:'#fff' };   // 中色淺紅
+  if (change >= 5.0) return { bg:'#ef9a9a', text:'#333' };   // 淡紅
+  if (change >= 3.0) return { bg:'#ffcdd2', text:'#555' };   // 更淡紅
+  if (change > 0)    return { bg:'#fff5f5', text:'#777' };   // 紅白底
+  if (change === 0)  return { bg:'#f8fafc', text:'#555' };   // 中性
+  if (change > -3.0) return { bg:'#f5fff7', text:'#777' };   // 綠白底
+  if (change >= -5.0)return { bg:'#c8e6c9', text:'#1a3a1a'}; // 更淡綠
+  if (change >= -6.5)return { bg:'#81c784', text:'#1a3a1a'}; // 淡綠
+  if (change >= -8.5)return { bg:'#2e7d32', text:'#fff' };   // 中色淺綠
+  return { bg:'#1b5e20', text:'#fff' };                       // 深綠
+}
+
+function formatChange(c) {
+  if (c > 0) return '+' + c.toFixed(2) + '%';
+  if (c < 0) return c.toFixed(2) + '%';
+  return '0.00%';
+}
+
+let currentFilter = 'all';
+
+function filterBy(bucket) {
+  currentFilter = bucket;
+  document.querySelectorAll('nav button').forEach((btn, i) => {
+    btn.classList.remove('active');
+  });
+  event.currentTarget.classList.add('active');
+  renderGrid();
+}
+
+function updateBadges() {
+  const counts = { all:0, 'u100':0, '100-120':0, '120-135':0, '135-150':0, 'o150':0 };
+  DATA.forEach(d => {
+    counts.all++;
+    counts[getBucket(d.price)]++;
+  });
+  document.getElementById('b-all').textContent = counts.all;
+  document.getElementById('b-u100').textContent = counts['u100'];
+  document.getElementById('b-100-120').textContent = counts['100-120'];
+  document.getElementById('b-120-135').textContent = counts['120-135'];
+  document.getElementById('b-135-150').textContent = counts['135-150'];
+  document.getElementById('b-o150').textContent = counts['o150'];
+}
+
+function renderGrid() {
+  const filtered = currentFilter === 'all'
+    ? [...DATA]
+    : DATA.filter(d => getBucket(d.price) === currentFilter);
+
+  filtered.sort((a, b) => b.change - a.change);
+
+  const up   = filtered.filter(d => d.change > 0).length;
+  const down = filtered.filter(d => d.change < 0).length;
+  const flat = filtered.filter(d => d.change === 0).length;
+  const top  = filtered.length ? filtered[0].change : 0;
+  const bot  = filtered.length ? filtered[filtered.length-1].change : 0;
+
+  document.getElementById('s-up').textContent   = up + ' 檔';
+  document.getElementById('s-down').textContent  = down + ' 檔';
+  document.getElementById('s-flat').textContent  = flat + ' 檔';
+  document.getElementById('s-top').textContent   = formatChange(top);
+  document.getElementById('s-bot').textContent   = formatChange(bot);
+
+  const titles = {
+    all:'全部可轉債', 'u100':'100 以下', '100-120':'100–120 元',
+    '120-135':'120–135 元', '135-150':'135–150 元', 'o150':'150 元以上'
+  };
+  document.getElementById('grid-title').textContent = titles[currentFilter] + `（${filtered.length} 檔）`;
+
+  const grid = document.getElementById('grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">此區間目前無資料</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => {
+    const { bg, text } = getColor(d.change);
+    return `
+      <div class="card" style="background:${bg};color:${text};">
+        <div class="card-name">${d.name}</div>
+        <div class="card-industry">${d.industry}</div>
+        <div class="card-bottom">
+          <span class="card-chain">${d.chain}</span>
+          <div class="card-price-block">
+            <div class="card-price">${d.price.toFixed(2)}</div>
+            <div class="card-change">${formatChange(d.change)}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+updateBadges();
+renderGrid();
+</script>
+</body>
+</html>

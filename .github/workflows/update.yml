@@ -19,11 +19,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests
+        run: pip install requests beautifulsoup4 lxml
 
-      - name: Fetch data and build HTML
-        env:
-          FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+      - name: Fetch TPEX data and build HTML
         run: python scripts/fetch_and_build.py
 
       - name: Commit and push updated HTML
